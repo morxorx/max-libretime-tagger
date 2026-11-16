@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>LibreTime Tagger</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎙%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <h1>LibreTime Tagger</h1>
+      <p class="readout" aria-live="polite">
+        <span class="readout-label">New file name</span>
+        <output id="readout" class="readout-text" for="show episode episodeTitle contributorInput date"></output>
+      </p>
+    </div>
+  </header>
+
+  <main class="layout">
+    <form id="tagForm" novalidate class="form">
+      <div class="column">
+        <section class="field" aria-labelledby="label-file">
+          <div class="label-row">
+            <span id="label-file" class="label">MP3 file</span><span class="req">required</span>
+            <button type="button" class="tip" aria-label="Help: MP3 file" aria-describedby="tip-file">?</button>
+            <span id="tip-file" role="tooltip" class="tip-text">The recording you want to tag. Drop it here or choose it from your computer. Only .mp3 files work.</span>
+          </div>
+          <button type="button" id="fileDrop" class="drop" aria-describedby="error-file">
+            <span id="fileDropText">Drop an MP3 here, or choose a file</span>
+          </button>
+          <input type="file" id="fileInput" accept=".mp3,audio/mpeg" hidden>
+          <p id="error-file" class="error" role="alert"></p>
+        </section>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="show">Show</label><span class="req">required</span>
+            <button type="button" class="tip" aria-label="Help: Show" aria-describedby="tip-show">?</button>
+            <span id="tip-show" role="tooltip" class="tip-text">Pick your show from the list so the name is always spelled the same. Add a new show or fix a name with the buttons next to the list.</span>
+          </div>
+          <div class="inline">
+            <select id="show" aria-describedby="error-show"></select>
+            <button type="button" id="newShow" class="btn">New show</button>
+            <button type="button" id="editShows" class="btn quiet">Edit shows</button>
+          </div>
+          <p id="error-show" class="error" role="alert"></p>
+        </div>
+
+        <div class="pair">
+          <div class="field">
+            <div class="label-row">
+              <label for="episode">Episode</label>
+              <button type="button" class="tip" aria-label="Help: Episode" aria-describedby="tip-episode">?</button>
+              <span id="tip-episode" role="tooltip" class="tip-text">The episode number, digits only. It is suggested from the last episode you saved for this show and you can change it. Leave empty if your show has no numbers.</span>
+            </div>
+            <input id="episode" inputmode="numeric" autocomplete="off" maxlength="6" aria-describedby="hint-episode error-episode">
+            <p id="hint-episode" class="hint"></p>
+            <p id="error-episode" class="error" role="alert"></p>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="episodeTitle">Episode title</label>
+              <button type="button" class="tip" aria-label="Help: Episode title" aria-describedby="tip-title">?</button>
+              <span id="tip-title" role="tooltip" class="tip-text">An optional title for this episode. Not for descriptions. Very long titles are shortened in the file name.</span>
+            </div>
+            <input id="episodeTitle" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="contributorInput">Contributors</label>
+            <button type="button" class="tip" aria-label="Help: Contributors" aria-describedby="tip-contributors">?</button>
+            <span id="tip-contributors" role="tooltip" class="tip-text">Hosts, DJs and guests. Type a name and press Enter or comma. Press the star on a name to make it a primary contributor of this show, so it is filled in next time.</span>
+          </div>
+          <div class="chips-box">
+            <ul id="chipList" class="chips" aria-label="Added contributors"></ul>
+            <input id="contributorInput" autocomplete="off" placeholder="Add a name">
+          </div>
+          <p class="hint">Enter or comma adds a name. The star marks a primary contributor.</p>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="date">Broadcast date</label><span class="req">required</span>
+            <button type="button" class="tip" aria-label="Help: Broadcast date" aria-describedby="tip-date">?</button>
+            <span id="tip-date" role="tooltip" class="tip-text">The day this episode goes on air. It becomes dd.mm.yyyy in the file name and tags.</span>
+          </div>
+          <input type="date" id="date" aria-describedby="error-date">
+          <p id="error-date" class="error" role="alert"></p>
+        </div>
+      </div>
+
+      <div class="column cover-column">
+        <section class="field" aria-labelledby="label-cover">
+          <div class="label-row">
+            <span id="label-cover" class="label">Episode cover</span><span class="req">required</span>
+            <button type="button" class="tip" aria-label="Help: Episode cover" aria-describedby="tip-cover">?</button>
+            <span id="tip-cover" role="tooltip" class="tip-text">A PNG, JPG or WebP image. It is cut to a square and saved as a JPEG up to 1400 × 1400 pixels. Drag the frame to choose the cut, or use the arrow keys. Shows with a primary cover fill it in for you.</span>
+          </div>
+          <div class="stage">
+            <button type="button" id="coverDrop" class="drop square" aria-describedby="error-cover">
+              <span>Drop an image here, or choose a file</span><small>PNG, JPG or WebP</small>
+            </button>
+            <canvas id="coverCanvas" width="360" height="360" tabindex="0" hidden
+              aria-label="Cover crop. Use the arrow keys to move the square, plus and minus to zoom."></canvas>
+          </div>
+          <input type="file" id="coverInput" accept="image/png,image/jpeg,image/webp" hidden>
+          <div id="coverTools" class="cover-tools" hidden>
+            <div id="zoomRow" class="zoom-row">
+              <label for="zoom">Zoom</label>
+              <input type="range" id="zoom" min="1" max="4" step="0.01" value="1">
+            </div>
+            <div class="preview-row">
+              <canvas id="coverPreview" width="96" height="96" aria-label="Preview of the square cover"></canvas>
+              <p id="coverStatus" class="hint" aria-live="polite"></p>
+            </div>
+            <div class="inline">
+              <button type="button" id="coverReplace" class="btn">Choose another</button>
+              <button type="button" id="coverRemove" class="btn quiet">Remove cover</button>
+            </div>
+            <label id="primaryCoverRow" class="check" hidden><input type="checkbox" id="primaryCover"> Use as the primary cover for this show</label>
+          </div>
+          <p id="error-cover" class="error" role="alert"></p>
+        </section>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Review and save</button>
+        <button type="reset" id="clearAll" class="btn quiet">Clear</button>
+      </div>
+    </form>
+  </main>
+
+  <dialog id="reviewDialog" aria-labelledby="reviewTitle">
+    <div class="dialog-body">
+      <h2 id="reviewTitle">Check before saving</h2>
+      <div id="reviewBody"></div>
+      <div class="actions" id="reviewActions"></div>
+    </div>
+  </dialog>
+
+  <dialog id="showsDialog" aria-labelledby="showsTitle">
+    <div class="dialog-body">
+      <h2 id="showsTitle">Your shows</h2>
+      <form id="addShowForm" class="inline add-show">
+        <label for="newShowName" class="label">New show</label>
+        <input id="newShowName" autocomplete="off" aria-describedby="showsError">
+        <button type="submit" class="btn primary">Add show</button>
+      </form>
+      <p id="showsError" class="error" role="alert"></p>
+      <p id="showsEmpty" class="hint" hidden>No shows yet. Add your first show above.</p>
+      <ul id="showList" class="show-list"></ul>
+      <div class="inline backup">
+        <button type="button" id="exportShows" class="btn">Back up shows</button>
+        <button type="button" id="importShows" class="btn">Restore from backup</button>
+        <input type="file" id="importInput" accept="application/json,.json" hidden>
+      </div>
+      <div class="actions"><button type="button" id="closeShows" class="btn primary">Done</button></div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
