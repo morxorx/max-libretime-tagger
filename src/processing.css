@@ -1,0 +1,18 @@
+.masthead { position: relative; }
+.masthead.is-processing { border-bottom-color: var(--line); }
+
+/* Sits on the masthead's 4px bottom border and fills it in the brand color. */
+.masthead-progress {
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: calc(var(--progress, 0) * 100%);
+  height: 4px;
+  background: var(--brand);
+  transition: width 0.2s linear;
+}
+
+.audio-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.audio-status:has(> :not([hidden]):not(:empty)) { margin-top: 0.1rem; }
+.audio-status .hint { flex: 1 1 12rem; }
+.audio-status .btn { min-height: 2.25rem; padding-block: 0.2rem; }

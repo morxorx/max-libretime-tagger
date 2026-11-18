@@ -1,10 +1,11 @@
-import { isMp3, pickMp3WithHandle, sourceFromDrop, sourceFromFile, type Mp3Source } from "../io/mp3Source";
+import { isSupportedAudio, pickAudioWithHandle, sourceFromDrop, sourceFromFile, type AudioSource } from "../io/audioSource";
 import { byId } from "./dom";
 
-const EMPTY_PROMPT = "Drop an MP3 here, or choose a file";
+const EMPTY_PROMPT = "Drop an audio file here, or choose a file";
+const UNSUPPORTED_MESSAGE = "Use an MP3, WAV, FLAC, AIFF, M4A, AAC, OGG or Opus file.";
 
-export class Mp3Picker {
-  source: Mp3Source | null = null;
+export class AudioPicker {
+  source: AudioSource | null = null;
   private readonly button = byId<HTMLButtonElement>("fileDrop");
   private readonly label = byId<HTMLElement>("fileDropText");
   private readonly input = byId<HTMLInputElement>("fileInput");
@@ -30,7 +31,7 @@ export class Mp3Picker {
   }
 
   private async choose(): Promise<void> {
-    const picked = await pickMp3WithHandle();
+    const picked = await pickAudioWithHandle();
     if (picked) this.accept(picked);
     else if (!window.showOpenFilePicker) this.input.click();
   }
@@ -49,15 +50,15 @@ export class Mp3Picker {
     if (source) this.accept(source);
   }
 
-  private accept(source: Mp3Source): void {
-    if (!isMp3(source.file)) {
-      this.error.textContent = "Only .mp3 files can be tagged.";
+  private accept(source: AudioSource): void {
+    if (!isSupportedAudio(source.file)) {
+      this.error.textContent = UNSUPPORTED_MESSAGE;
       return;
     }
     this.set(source);
   }
 
-  private set(source: Mp3Source | null): void {
+  private set(source: AudioSource | null): void {
     this.source = source;
     this.error.textContent = "";
     this.label.textContent = source ? source.file.name : EMPTY_PROMPT;

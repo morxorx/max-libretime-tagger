@@ -1,19 +1,21 @@
 import { loadTagLib } from "./audio/tagLibLoader";
 import { writeTags } from "./audio/tagWriter";
 import { buildFilename, isEpisodeTitleShortenedInFilename } from "./domain/naming";
+import { buildReviewNotes } from "./domain/reviewNotes";
 import { buildTags } from "./domain/tags";
 import type { EpisodeDraft } from "./domain/types";
 import { validateForm, type FieldErrors, type FieldName, type RawForm } from "./domain/validation";
-import { readBytes, type Mp3Source } from "./io/mp3Source";
+import { readBytes, type AudioSource } from "./io/audioSource";
 import { canReplaceOriginal, saveTaggedMp3, type SaveOutcome } from "./io/saveMp3";
 import { ShowCatalog } from "./shows/catalog";
 import { IndexedDbRepository } from "./shows/indexedDbRepository";
 import { suggestedEpisode } from "./shows/profile";
 import { MemoryRepository, type ProfileRepository } from "./shows/repository";
+import { AudioPicker } from "./ui/audioPicker";
+import { AudioPreparation, type PreparedAudio } from "./ui/audioPreparation";
 import { ContributorsInput } from "./ui/contributors";
 import { CoverEditor } from "./ui/coverEditor";
 import { byId, h, onEscapeBlurTooltip } from "./ui/dom";
-import { Mp3Picker } from "./ui/mp3Picker";
 import { ReviewDialog } from "./ui/reviewDialog";
 import { ShowsDialog, type ShowsChange } from "./ui/showsDialog";
 
@@ -41,6 +43,7 @@ async function openCatalog(): Promise<{ catalog: ShowCatalog; storageNotice: str
 
 class TaggerApp {
   private readonly form = byId<HTMLFormElement>("tagForm");
+  private readonly reviewButton = byId<HTMLButtonElement>("reviewButton");
   private readonly show = byId<HTMLSelectElement>("show");
   private readonly episode = byId<HTMLInputElement>("episode");
   private readonly episodeHint = byId("hint-episode");
@@ -50,7 +53,11 @@ class TaggerApp {
   private readonly primaryCoverRow = byId("primaryCoverRow");
   private readonly readout = byId<HTMLOutputElement>("readout");
 
-  private readonly picker = new Mp3Picker(() => this.updateReadout());
+  private readonly picker = new AudioPicker(() => this.onFileChosen());
+  private readonly audio = new AudioPreparation({
+    onChange: () => this.onAudioStateChanged(),
+    onCancel: () => this.picker.clear(),
+  });
   private readonly contributors = new ContributorsInput(() => this.updateReadout());
   private readonly cover = new CoverEditor(() => this.onCoverChanged());
   private readonly reviewDialog = new ReviewDialog();
@@ -83,6 +90,15 @@ class TaggerApp {
   private onFieldEdited(control: HTMLElement): void {
     this.clearError(control);
     this.updateReadout();
+  }
+
+  private onFileChosen(): void {
+    this.audio.load(this.picker.source);
+    this.updateReadout();
+  }
+
+  private onAudioStateChanged(): void {
+    this.reviewButton.disabled = this.audio.isProcessing();
   }
 
   private renderShowOptions(selected: string): void {
@@ -154,18 +170,24 @@ class TaggerApp {
     if (!result.ok) return this.showErrors(result.errors);
 
     const source = this.picker.source;
+    const audio = this.audio.prepared;
+    if (source && !audio) return this.showErrors({ file: this.audio.notReadyMessage() });
     const cover = await this.prepareCover();
-    if (!source || !cover) return;
+    if (!source || !audio || !cover) return;
 
     this.reviewDialog.open(
       {
         originalName: source.file.name,
         newName: buildFilename(result.draft),
         tags: buildTags(result.draft),
-        nameWasShortened: isEpisodeTitleShortenedInFilename(result.draft),
-        replacesOriginal: canReplaceOriginal(source),
+        notes: buildReviewNotes({
+          converted: audio.converted,
+          loudness: audio.loudness,
+          replacesOriginal: canReplaceOriginal(source),
+          nameWasShortened: isEpisodeTitleShortenedInFilename(result.draft),
+        }),
       },
-      () => this.save(source, result.draft, cover),
+      () => this.save(source, result.draft, cover, audio),
       () => this.resetForNextFile(),
     );
   }
@@ -179,9 +201,10 @@ class TaggerApp {
     }
   }
 
-  private async save(source: Mp3Source, draft: EpisodeDraft, cover: Blob): Promise<SaveOutcome> {
+  private async save(source: AudioSource, draft: EpisodeDraft, cover: Blob, audio: PreparedAudio): Promise<SaveOutcome> {
     const coverBytes = new Uint8Array(await cover.arrayBuffer());
-    const tagged = await writeTags(await loadTagLib(), await readBytes(source), buildTags(draft), coverBytes);
+    const mp3 = audio.bytes ?? (await readBytes(source));
+    const tagged = await writeTags(await loadTagLib(), mp3, buildTags(draft), coverBytes);
     const outcome = await saveTaggedMp3(source, buildFilename(draft), tagged);
     await this.rememberShow(draft, cover);
     return outcome;

@@ -6,8 +6,7 @@ export interface ReviewModel {
   originalName: string;
   newName: string;
   tags: Mp3Tags;
-  nameWasShortened: boolean;
-  replacesOriginal: boolean;
+  notes: string[];
 }
 
 const OUTCOME_MESSAGES: Record<SaveOutcome, (name: string) => string> = {
@@ -86,13 +85,6 @@ export class ReviewDialog {
   }
 
   private renderNotes(model: ReviewModel): HTMLElement {
-    const notes = [
-      "All other tags in the file are removed.",
-      model.replacesOriginal
-        ? "Saving changes the original file and renames it. If a file with the new name is in the same folder, check it first."
-        : "Your browser cannot rename the original. A tagged copy is downloaded and the original stays unchanged.",
-    ];
-    if (model.nameWasShortened) notes.push("The episode title is shortened in the file name to stay within 100 characters. The Title tag keeps it in full.");
-    return h("ul", { class: "notes" }, ...notes.map((text) => h("li", { textContent: text })));
+    return h("ul", { class: "notes" }, ...model.notes.map((text) => h("li", { textContent: text })));
   }
 }
