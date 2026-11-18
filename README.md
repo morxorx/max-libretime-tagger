@@ -1,20 +1,12 @@
-<h1 align="center">
+<h1 align="left">
+  Sphere Radio LibreTime Tagger
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/sphere-logo-white.svg">
-    <img src="src/assets/sphere-logo.svg" alt="Sphere Radio logo" width="96"><br>
+    <a href="https://sphere-radio.net"><img src="src/assets/sphere-logo.svg" alt="Sphere Radio logo" width="50" align="right"></a>
   </picture>
-  Sphere Radio LibreTime Tagger
 </h1>
 
-<p align="center">
-  A small web app that tags MP3 files for the <a href="https://sphere-radio.net">Sphere Radio</a> LibreTime library.<br>
-  Fill in a short form, check the preview, save.
-</p>
-
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6800fa.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/node-%E2%89%A5%2022-6800fa.svg" alt="Node 22 or newer">
-</p>
+A small web app that tags MP3 files for the <a href="https://sphere-radio.net">Sphere Radio</a> LibreTime library.
 
 The app asks only for what LibreTime needs, so tags and file names are always consistent.
 
@@ -23,26 +15,30 @@ The app asks only for what LibreTime needs, so tags and file names are always co
 
 ## Features
 
-- **Narrow by design:** only show, episode, episode title, contributors, broadcast date and cover are asked for
-- **Show list instead of free text:** shows are picked from a list, so spelling, capitalization and quotation marks never drift apart
+- **Add clean tags:** the app only asks for the info the Sphere Radio tagging scheme can accommodate. It embeds these tags in a way LibreTime can read and removes leftover tags.
+  - show
+  - episode (and optional title)
+  - contributors
+  - broadcast date
+  - cover art
+- **Automatically compile title tag and file name:** both the title tag and the file name are combined from your show, episode, contributors etc. The app creates them automatically for you.
+- **Show list:** most users will always tag the same show. The app stores added shows in a list, so shows with complicated special characters only have to be added once. This ensures consistent spelling, capitalization, and special characters.
 - **Per-show defaults:** the next episode number, primary contributors and primary cover are filled in for you
-- **Cover cropping:** drag a square frame over the image to see exactly what is cut off. The result is saved as a JPEG up to 1400 × 1400 px
-- **Clean tags:** all existing tags in the file (comments, genres, ID3v1, APE and so on) are removed. Only the tags below are written
+- **Cover cropping:** drag a square frame over the image to see exactly what is cut off. The result is saved as a JPEG up to 1400 × 1400 px  
 - **Preview before saving:** the new file name and every tag are shown before anything changes
-- **Built-in help:** a welcome message explains the tool on the first visit. The footer reopens it (**Help**) and links to the **About** section
 
 ## What gets written
 
 | Input | Tag | Example |
 | --- | --- | --- |
-| Show, episode, episode title, contributors, date | Title | `Nice Show - 23 - Christmas Special - DJ Mike, DJ Angela - 24.12.2012` |
+| Show + episode + episode title + contributors + date | Title | `Nice Show - 23 - Christmas Special - DJ Mike, DJ Angela - 24.12.2012` |
 | Show | Album | `Nice Show` |
 | Contributors | Artist | `DJ Mike, DJ Angela` |
 | Episode | Track number | `23` |
 | Broadcast date | Composer | `24.12.2012` |
 | Cover | Front cover (JPEG) | |
 
-Empty optional parts are left out of the title. The file name is the title with characters that are not allowed in file names replaced by `_`. If it would exceed 100 characters, only the episode title is shortened, and only in the file name.
+Empty optional parts are left out of the title. The file name is the title with characters that are not allowed in file names replaced by `_`. If it would exceed 100 characters (SoundCloud character limit), only the episode title is shortened, and only in the file name.
 
 ## Using the app
 
@@ -60,7 +56,7 @@ Press the **?** next to any field for a short explanation.
 Each show remembers:
 
 - the last episode you saved, so the next one is suggested (and stays editable)
-- its primary contributors. Press the star on a name to mark it as primary (this contributor is automatically loaded upon selecting the show it is associated with)
+- its primary contributors. Press the ⭐️ on a name to mark it as primary (this contributor is automatically loaded upon selecting the show it is associated with)
 - its primary cover. Tick **Use as the primary cover for this show** after choosing an image (also directly associated with the show)
 
 Use the **primary** option when your show always has the same contributors or the same cover image. Everything remains editable in the tagger.
@@ -71,14 +67,11 @@ Use **Edit shows** to rename or delete shows and to clear a primary cover. Shows
 
 | Browser | Saving |
 | --- | --- |
-| Chrome, Edge, Opera | Renames and overwrites the original file |
+| Chrome, Edge, Opera | Renames and overwrites the original file (not tested, may also save a copy)|
 | Firefox, Safari | Downloads a tagged copy. The original stays untouched |
 
 > [!NOTE]
 > The review dialog always says which of the two will happen.
-
-> [!WARNING]
-> When the original is renamed in place, check that no file with the new name already exists in the same folder. The browser does not report such conflicts.
 
 ## Customizing
 
@@ -92,20 +85,9 @@ Use **Edit shows** to rename or delete shows and to clear a primary cover. Shows
 
 The first-visit popup is shown once per browser. Closing it stores the key `sphere-tagger-welcome-seen` in `localStorage`. Delete that key to see the popup again.
 
-> [!TIP]
-> Keep the accent color readable: `#6800FA` has about 7:1 contrast with white. When you change it, check the new color against the light and the dark surface.
-
 ## Development
 
 Requires Node.js 22 or newer.
-
-```bash
-npm ci
-npm run dev       # local development server
-npm test          # unit and interface tests
-npm run build     # type-check and production build into dist/
-npm run preview   # serve the production build
-```
 
 Tags are written with [taglib-wasm](https://github.com/CharlesWiltgen/TagLib-Wasm), a WebAssembly build of TagLib.
 
