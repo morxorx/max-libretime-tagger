@@ -4,13 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>LibreTime Tagger</title>
+  <title>Sphere Radio LibreTime Tagger</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎙%3C/text%3E%3C/svg%3E">
 </head>
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <h1>LibreTime Tagger</h1>
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <h1>Sphere Radio LibreTime Tagger</h1>
+      </div>
       <p class="readout" aria-live="polite">
         <span class="readout-label">New file name</span>
         <output id="readout" class="readout-text" for="show episode episodeTitle contributorInput date"></output>
@@ -134,6 +137,14 @@
     </form>
   </main>
 
+  <footer class="site-footer">
+    <nav class="site-footer-inner" aria-label="Information">
+      <button type="button" id="openHelp" class="link-button">Help</button>
+      <button type="button" id="openAbout" class="link-button">About</button>
+      <button type="button" id="openImprint" class="link-button">Imprint</button>
+    </nav>
+  </footer>
+
   <dialog id="reviewDialog" aria-labelledby="reviewTitle">
     <div class="dialog-body">
       <h2 id="reviewTitle">Check before saving</h2>
@@ -159,6 +170,57 @@
         <input type="file" id="importInput" accept="application/json,.json" hidden>
       </div>
       <div class="actions"><button type="button" id="closeShows" class="btn primary">Done</button></div>
+    </div>
+  </dialog>
+
+  <!-- EDIT HERE: welcome text. Shown on the first visit and by the footer's Help button. -->
+  <dialog id="welcomeDialog" aria-labelledby="welcomeTitle">
+    <div class="dialog-body">
+      <h2 id="welcomeTitle">Welcome to the Sphere Radio LibreTime Tagger</h2>
+      <h3>What it is</h3>
+      <p>A small tool that prepares MP3 files for the Sphere Radio LibreTime library. You fill in a short form and it writes the tags, the cover image and the file name for you.</p>
+      <h3>How it works</h3>
+      <ol class="steps">
+        <li>Choose or drop an MP3 file.</li>
+        <li>Pick your show, then add the episode, contributors and broadcast date.</li>
+        <li>Add a cover image and choose the square cut.</li>
+        <li>Check the summary and save.</li>
+      </ol>
+      <h3>Why it exists</h3>
+      <p>LibreTime builds its library from the tags and file names of the files it receives. When every file is named and tagged differently, the library gets messy. This tagger asks only for what LibreTime needs and removes everything else, so every file looks the same.</p>
+      <p class="hint">Everything runs in your browser. Your audio files are never uploaded.</p>
+      <form method="dialog" class="actions"><button class="btn primary" autofocus>Get started</button></form>
+    </div>
+  </dialog>
+
+  <!-- EDIT HERE: about text. Opened by the footer's About button. -->
+  <dialog id="aboutDialog" aria-labelledby="aboutTitle">
+    <div class="dialog-body">
+      <h2 id="aboutTitle">About this tagger</h2>
+      <p>[Placeholder: one or two sentences about the tagger and who it is for.]</p>
+      <dl class="summary">
+        <dt>Maintained by</dt><dd>[Placeholder: name or team]</dd>
+        <dt>Contact</dt><dd>[Placeholder: email address]</dd>
+        <dt>Source code</dt><dd>[Placeholder: repository link]</dd>
+        <dt>Version</dt><dd>[Placeholder: version number]</dd>
+      </dl>
+      <form method="dialog" class="actions"><button class="btn primary" autofocus>Close</button></form>
+    </div>
+  </dialog>
+
+  <!-- EDIT HERE: imprint text. Opened by the footer's Imprint button. -->
+  <dialog id="imprintDialog" aria-labelledby="imprintTitle">
+    <div class="dialog-body">
+      <h2 id="imprintTitle">Imprint</h2>
+      <dl class="summary">
+        <dt>Operator</dt><dd>[Placeholder: Sphere Radio legal name]</dd>
+        <dt>Address</dt><dd>[Placeholder: street, postal code, city, country]</dd>
+        <dt>Represented by</dt><dd>[Placeholder: name]</dd>
+        <dt>Contact</dt><dd>[Placeholder: email address and phone number]</dd>
+        <dt>Register entry</dt><dd>[Placeholder: register court and number]</dd>
+        <dt>VAT ID</dt><dd>[Placeholder: VAT identification number]</dd>
+      </dl>
+      <form method="dialog" class="actions"><button class="btn primary" autofocus>Close</button></form>
     </div>
   </dialog>
 
