@@ -1,6 +1,22 @@
-# Sphere Radio LibreTime Tagger
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/sphere-logo-white.svg">
+    <img src="src/assets/sphere-logo.svg" alt="Sphere Radio logo" width="96"><br>
+  </picture>
+  Sphere Radio LibreTime Tagger
+</h1>
 
-A small web app that tags MP3 files for the [Sphere Radio](https://sphere-radio.net) LibreTime library. Fill in a short form, check the preview, save. The app asks only for what LibreTime needs, so tags and file names are always consistent.
+<p align="center">
+  A small web app that tags MP3 files for the <a href="https://sphere-radio.net">Sphere Radio</a> LibreTime library.<br>
+  Fill in a short form, check the preview, save.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6800fa.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2022-6800fa.svg" alt="Node 22 or newer">
+</p>
+
+The app asks only for what LibreTime needs, so tags and file names are always consistent.
 
 > [!NOTE]
 > Everything runs in your browser. Your audio files are never uploaded anywhere.
@@ -13,6 +29,7 @@ A small web app that tags MP3 files for the [Sphere Radio](https://sphere-radio.
 - **Cover cropping:** drag a square frame over the image to see exactly what is cut off. The result is saved as a JPEG up to 1400 × 1400 px
 - **Clean tags:** all existing tags in the file (comments, genres, ID3v1, APE and so on) are removed. Only the tags below are written
 - **Preview before saving:** the new file name and every tag are shown before anything changes
+- **Built-in help:** a welcome message explains the tool on the first visit. The footer reopens it (**Help**) and links to the **About** section
 
 ## What gets written
 
@@ -63,6 +80,21 @@ Use **Edit shows** to rename or delete shows and to clear a primary cover. Shows
 > [!WARNING]
 > When the original is renamed in place, check that no file with the new name already exists in the same folder. The browser does not report such conflicts.
 
+## Customizing
+
+| What | Where |
+| --- | --- |
+| Welcome message | `index.html`, the dialog `#welcomeDialog` (look for `EDIT HERE: welcome text`) |
+| About text | `index.html`, the dialog `#aboutDialog` (look for `EDIT HERE: about text`) |
+| Turn the first-visit popup off | `SHOW_WELCOME_ON_FIRST_VISIT` in `src/config.ts`. The footer's **Help** button keeps working |
+| Accent color | `--brand` and `--accent` at the top of `src/styles.css`. Dark mode has its own lighter `--accent` in the `prefers-color-scheme: dark` block |
+| Logo | `src/assets/sphere-logo.svg`, shown in the header. It is used as a mask, so it takes the text color in light and dark mode |
+
+The first-visit popup is shown once per browser. Closing it stores the key `sphere-tagger-welcome-seen` in `localStorage`. Delete that key to see the popup again.
+
+> [!TIP]
+> Keep the accent color readable: `#6800FA` has about 7:1 contrast with white. When you change it, check the new color against the light and the dark surface.
+
 ## Development
 
 Requires Node.js 22 or newer.
@@ -79,12 +111,17 @@ Tags are written with [taglib-wasm](https://github.com/CharlesWiltgen/TagLib-Was
 
 ```text
 src/
+  assets/   logo
   domain/   title, file name, tag and validation rules (no browser code)
   audio/    tag stripping and writing with TagLib
   cover/    crop math and JPEG rendering
   shows/    show profiles, storage and backup
   io/       choosing and saving files
   ui/       form, cover editor, dialogs
-tests/      unit tests and a jsdom test of the form
+  config.ts switches you may want to change
+tests/      unit tests, a jsdom test of the form and of the info dialogs
 ```
 
+### Deployment
+
+Every push to `main` runs the tests, builds the app and publishes `dist/` to GitHub Pages (see `.github/workflows/deploy.yml`).
