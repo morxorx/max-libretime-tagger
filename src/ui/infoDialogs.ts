@@ -5,7 +5,6 @@ export const WELCOME_SEEN_KEY = "sphere-tagger-welcome-seen";
 
 export function setUpInfoDialogs(): void {
   openOnClick("openAbout", "aboutDialog");
-  openOnClick("openImprint", "imprintDialog");
   const welcome = openOnClick("openHelp", "welcomeDialog");
   if (SHOW_WELCOME_ON_FIRST_VISIT && !hasSeenWelcome()) showFirstVisit(welcome);
 }

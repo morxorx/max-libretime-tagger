@@ -65,7 +65,7 @@ describe("welcome dialog", () => {
 });
 
 describe("footer", () => {
-  it.each([["openAbout", "aboutDialog"], ["openImprint", "imprintDialog"]])("%s opens %s", async (button, target) => {
+  it.each([["openAbout", "aboutDialog"]])("%s opens %s", async (button, target) => {
     await startWith(false);
     click(button);
     expect(dialog(target).open).toBe(true);

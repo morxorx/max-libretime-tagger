@@ -15,7 +15,7 @@
         <h1>Sphere Radio LibreTime Tagger</h1>
       </div>
       <p class="readout" aria-live="polite">
-        <span class="readout-label">New file name</span>
+        <span class="readout-label">New filename</span>
         <output id="readout" class="readout-text" for="show episode episodeTitle contributorInput date"></output>
       </p>
     </div>
@@ -89,7 +89,7 @@
           <div class="label-row">
             <label for="date">Broadcast date</label><span class="req">required</span>
             <button type="button" class="tip" aria-label="Help: Broadcast date" aria-describedby="tip-date">?</button>
-            <span id="tip-date" role="tooltip" class="tip-text">The day this episode goes on air. It becomes dd.mm.yyyy in the file name and tags.</span>
+            <span id="tip-date" role="tooltip" class="tip-text">The day this episode goes on air. It becomes dd.mm.yyyy in the filename and tags.</span>
           </div>
           <input type="date" id="date" aria-describedby="error-date">
           <p id="error-date" class="error" role="alert"></p>
@@ -141,7 +141,6 @@
     <nav class="site-footer-inner" aria-label="Information">
       <button type="button" id="openHelp" class="link-button">Help</button>
       <button type="button" id="openAbout" class="link-button">About</button>
-      <button type="button" id="openImprint" class="link-button">Imprint</button>
     </nav>
   </footer>
 
@@ -178,16 +177,16 @@
     <div class="dialog-body">
       <h2 id="welcomeTitle">Welcome to the Sphere Radio LibreTime Tagger</h2>
       <h3>What it is</h3>
-      <p>A small tool that prepares MP3 files for the Sphere Radio LibreTime library. You fill in a short form and it writes the tags, the cover image and the file name for you.</p>
+      <p>A small tool that prepares MP3 files for the Sphere Radio LibreTime library. You fill in a short form and it writes the tags, the cover image and the filename for you.</p>
       <h3>How it works</h3>
       <ol class="steps">
         <li>Choose or drop an MP3 file.</li>
-        <li>Pick your show, then add the episode, contributors and broadcast date.</li>
+        <li>Pick your show, then add the episode, contributors, and broadcast date.</li>
         <li>Add a cover image and choose the square cut.</li>
         <li>Check the summary and save.</li>
       </ol>
       <h3>Why it exists</h3>
-      <p>LibreTime builds its library from the tags and file names of the files it receives. When every file is named and tagged differently, the library gets messy. This tagger asks only for what LibreTime needs and removes everything else, so every file looks the same.</p>
+      <p>When every file is named and tagged differently, the LibreTime library gets messy. This tagger asks only for what LibreTime needs and removes everything else, so every file looks the same.</p>
       <p class="hint">Everything runs in your browser. Your audio files are never uploaded.</p>
       <form method="dialog" class="actions"><button class="btn primary" autofocus>Get started</button></form>
     </div>
@@ -197,28 +196,11 @@
   <dialog id="aboutDialog" aria-labelledby="aboutTitle">
     <div class="dialog-body">
       <h2 id="aboutTitle">About this tagger</h2>
-      <p>[Placeholder: one or two sentences about the tagger and who it is for.]</p>
+      <p>This tagger is for <a href="https://sphere-radio.net">Sphere Radio</a> contributors. Its goal is to simplify tagging MP3 files according to the Sphere Radio tagging scheme for LibreTime.</p>
+      <p>Sphere Radio e.V. is an interdisciplinary community radio in Leipzig, Germany. For more info visit <a href="https://sphere-radio.net">sphere-radio.net</a>.</p>
       <dl class="summary">
-        <dt>Maintained by</dt><dd>[Placeholder: name or team]</dd>
-        <dt>Contact</dt><dd>[Placeholder: email address]</dd>
-        <dt>Source code</dt><dd>[Placeholder: repository link]</dd>
-        <dt>Version</dt><dd>[Placeholder: version number]</dd>
-      </dl>
-      <form method="dialog" class="actions"><button class="btn primary" autofocus>Close</button></form>
-    </div>
-  </dialog>
-
-  <!-- EDIT HERE: imprint text. Opened by the footer's Imprint button. -->
-  <dialog id="imprintDialog" aria-labelledby="imprintTitle">
-    <div class="dialog-body">
-      <h2 id="imprintTitle">Imprint</h2>
-      <dl class="summary">
-        <dt>Operator</dt><dd>[Placeholder: Sphere Radio legal name]</dd>
-        <dt>Address</dt><dd>[Placeholder: street, postal code, city, country]</dd>
-        <dt>Represented by</dt><dd>[Placeholder: name]</dd>
-        <dt>Contact</dt><dd>[Placeholder: email address and phone number]</dd>
-        <dt>Register entry</dt><dd>[Placeholder: register court and number]</dd>
-        <dt>VAT ID</dt><dd>[Placeholder: VAT identification number]</dd>
+        <dt>Contact</dt><dd><a href="mailto:kontakt@sphere-radio.net">kontakt@sphere-radio.net</a></dd>
+        <dt>Source code</dt><dd><a href="https://github.com/morxorx/sphere-libretime-tagger">github.com/morxorx/sphere-libretime-tagger</a></dd>
       </dl>
       <form method="dialog" class="actions"><button class="btn primary" autofocus>Close</button></form>
     </div>
