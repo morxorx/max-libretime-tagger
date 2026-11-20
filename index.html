@@ -29,9 +29,14 @@
           <div class="label-row">
             <label class="check"><input type="checkbox" id="normalize"> Normalize loudness</label>
             <button type="button" class="tip" aria-label="Help: Normalize loudness" aria-describedby="tip-normalize">?</button>
-            <span id="tip-normalize" role="tooltip" class="tip-text">Evens out the volume to a standard loudness (EBU R128). The audio is re-encoded, so choose this before picking the file. It takes a while for long recordings.</span>
+            <span id="tip-normalize" role="tooltip" class="tip-text">Evens out the volume to a standard loudness (EBU R128). The audio is re-encoded. Changing this restarts the processing of the chosen file.</span>
           </div>
           <select id="loudnessTarget" aria-label="Loudness target" disabled></select>
+          <div class="label-row">
+            <label class="check"><input type="checkbox" id="trimSilence"> Trim silence at start and end</label>
+            <button type="button" class="tip" aria-label="Help: Trim silence" aria-describedby="tip-trim">?</button>
+            <span id="tip-trim" role="tooltip" class="tip-text">Cuts silence from the very start and the very end of the recording. Pauses inside the recording stay. The audio is re-encoded. The review dialog says how much was cut.</span>
+          </div>
         </div>
 
         <section class="field" aria-labelledby="label-file">
@@ -48,6 +53,9 @@
             <p id="audioStatus" class="hint" role="status"></p>
             <button type="button" id="audioCancel" class="btn quiet" hidden>Cancel</button>
           </div>
+          <p id="audioInfo" class="hint"></p>
+          <p id="audioResult" class="hint"></p>
+          <audio id="audioPreview" class="audio-preview" controls preload="metadata" aria-label="Preview of the audio that will be saved" hidden></audio>
           <p id="error-file" class="error" role="alert"></p>
         </section>
 
@@ -202,7 +210,7 @@
       <p>A small tool that prepares audio files for the Sphere Radio LibreTime library. You fill in a short form and it writes the tags, the cover image and the filename for you.</p>
       <h3>How it works</h3>
       <ol class="steps">
-        <li>Choose or drop an audio file. MP3 is tagged as it is, other formats are converted to MP3. Tick <b>Normalize loudness</b> first if you want even volume.</li>
+        <li>Choose or drop an audio file. MP3 is tagged as it is, other formats are converted to MP3. Tick <b>Normalize loudness</b> or <b>Trim silence</b> if you want them. You can change both at any time.</li>
         <li>Pick your show, then add the episode, contributors, and broadcast date.</li>
         <li>Add a cover image and choose the square cut.</li>
         <li>Check the summary and save.</li>

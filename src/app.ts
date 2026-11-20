@@ -182,7 +182,9 @@ class TaggerApp {
         tags: buildTags(result.draft),
         notes: buildReviewNotes({
           converted: audio.converted,
+          reencoded: audio.blob !== null,
           loudness: audio.loudness,
+          trim: audio.trim,
           replacesOriginal: canReplaceOriginal(source),
           nameWasShortened: isEpisodeTitleShortenedInFilename(result.draft),
         }),
@@ -203,7 +205,7 @@ class TaggerApp {
 
   private async save(source: AudioSource, draft: EpisodeDraft, cover: Blob, audio: PreparedAudio): Promise<SaveOutcome> {
     const coverBytes = new Uint8Array(await cover.arrayBuffer());
-    const mp3 = audio.bytes ?? (await readBytes(source));
+    const mp3 = audio.blob ? new Uint8Array(await audio.blob.arrayBuffer()) : await readBytes(source);
     const tagged = await writeTags(await loadTagLib(), mp3, buildTags(draft), coverBytes);
     const outcome = await saveTaggedMp3(source, buildFilename(draft), tagged);
     await this.rememberShow(draft, cover);

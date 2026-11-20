@@ -11,8 +11,7 @@ export interface LoudnessMeasurement {
 
 const REPORT_PATTERN = /\{[^{}]*"input_i"[^{}]*\}/;
 const NORMALIZATION_TYPE_PATTERN = /"normalization_type"\s*:\s*"(\w+)"/;
-// The first audio stream line is the input; the output stream is listed after it.
-const SOURCE_RATE_PATTERN = /Stream #0:\d+[^\n]*?Audio:[^\n]*?,\s*(\d+) Hz/;
+const OUTPUT_LUFS_PATTERN = /"output_i"\s*:\s*"([^"]+)"/;
 
 export function parseMeasurement(log: string): LoudnessMeasurement {
   const report = readReport(log);
@@ -29,14 +28,14 @@ export function parseMeasurement(log: string): LoudnessMeasurement {
   return measurement;
 }
 
-// Unknown counts as dynamic: the warning shown for it is the safe side of a wrong guess.
-export function parseNormalizationType(log: string): NormalizationType {
-  return NORMALIZATION_TYPE_PATTERN.exec(log)?.[1] === "linear" ? "linear" : "dynamic";
+export function parseOutputLufs(log: string): number | undefined {
+  const lufs = Number(OUTPUT_LUFS_PATTERN.exec(log)?.[1]);
+  return Number.isFinite(lufs) ? lufs : undefined;
 }
 
-export function parseSampleRate(log: string): number | undefined {
-  const rate = SOURCE_RATE_PATTERN.exec(log)?.[1];
-  return rate === undefined ? undefined : Number(rate);
+// Unknown counts as dynamic: the warning shown for it is the safe side of a wrong guess.
+export function parseNormalizationType(log: string): Exclude<NormalizationType, "unchanged"> {
+  return NORMALIZATION_TYPE_PATTERN.exec(log)?.[1] === "linear" ? "linear" : "dynamic";
 }
 
 function readReport(log: string): Record<string, string> {
