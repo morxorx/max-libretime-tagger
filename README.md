@@ -6,6 +6,8 @@
   </picture>
 </h1>
 
+**Fork of [Sphere Libretime Tagger](https://github.com/sphere-radio/sphere-libretime-tagger) with some extra shenanigans.**
+
 A small web app that tags MP3 files for the <a href="https://sphere-radio.net">Sphere Radio</a> LibreTime library.
 
 The app asks only for what LibreTime needs, so tags and file names are always consistent.
