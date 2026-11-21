@@ -41,14 +41,15 @@
 
         <section class="field" aria-labelledby="label-file">
           <div class="label-row">
-            <span id="label-file" class="label">Audio file</span><span class="req">required</span>
-            <button type="button" class="tip" aria-label="Help: Audio file" aria-describedby="tip-file">?</button>
-            <span id="tip-file" role="tooltip" class="tip-text">The recording you want to tag. Drop it here or choose it from your computer. MP3 files are tagged as they are. WAV, FLAC, AIFF, M4A, AAC, OGG and Opus files are converted to a 320 kbps MP3 first.</span>
+            <span id="label-file" class="label">Audio files</span><span class="req">required</span>
+            <button type="button" class="tip" aria-label="Help: Audio files" aria-describedby="tip-file">?</button>
+            <span id="tip-file" role="tooltip" class="tip-text">The recordings you want to tag. Drop them here or choose them from your computer. With several files, you tag them one after the other, and the next one is prepared while you work. MP3 files are tagged as they are. WAV, FLAC, AIFF, M4A, AAC, OGG and Opus files are converted to a 320 kbps MP3 first.</span>
           </div>
           <button type="button" id="fileDrop" class="drop" aria-describedby="error-file">
-            <span id="fileDropText">Drop an audio file here, or choose a file</span>
+            <span id="fileDropText">Drop audio files here, or choose files</span>
           </button>
-          <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.oga,.opus" hidden>
+          <ol id="queueList" class="queue" aria-label="Files to tag" hidden></ol>
+          <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.oga,.opus" multiple hidden>
           <div class="audio-status">
             <p id="audioStatus" class="hint" role="status"></p>
             <button type="button" id="audioCancel" class="btn quiet" hidden>Cancel</button>
@@ -210,7 +211,7 @@
       <p>A small tool that prepares audio files for the Sphere Radio LibreTime library. You fill in a short form and it writes the tags, the cover image and the filename for you.</p>
       <h3>How it works</h3>
       <ol class="steps">
-        <li>Choose or drop an audio file. MP3 is tagged as it is, other formats are converted to MP3. Tick <b>Normalize loudness</b> or <b>Trim silence</b> if you want them. You can change both at any time.</li>
+        <li>Choose or drop one or more audio files. With several files, you tag them one after the other. MP3 is tagged as it is, other formats are converted to MP3. Tick <b>Normalize loudness</b> or <b>Trim silence</b> if you want them. You can change both at any time.</li>
         <li>Pick your show, then add the episode, contributors, and broadcast date.</li>
         <li>Add a cover image and choose the square cut.</li>
         <li>Check the summary and save.</li>

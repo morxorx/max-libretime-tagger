@@ -23,24 +23,32 @@ export function sourceFromFile(file: File): AudioSource {
   return { file, handle: null };
 }
 
-export async function pickAudioWithHandle(): Promise<AudioSource | null> {
-  if (!window.showOpenFilePicker) return null;
+export async function pickAudioWithHandles(): Promise<AudioSource[]> {
+  if (!window.showOpenFilePicker) return [];
   try {
-    const [handle] = await window.showOpenFilePicker(AUDIO_PICKER_OPTIONS);
-    return handle ? { file: await handle.getFile(), handle } : null;
+    const handles = await window.showOpenFilePicker({ ...AUDIO_PICKER_OPTIONS, multiple: true });
+    return await Promise.all(handles.map(async (handle) => ({ file: await handle.getFile(), handle })));
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return null;
+    if (error instanceof DOMException && error.name === "AbortError") return [];
     throw error;
   }
 }
 
-export async function sourceFromDrop(item: DataTransferItem): Promise<AudioSource | null> {
-  const handle = await item.getAsFileSystemHandle?.();
-  if (handle?.kind === "file") {
-    const fileHandle = handle as FileSystemFileHandle;
+export async function sourcesFromDrop(items: DataTransferItemList): Promise<AudioSource[]> {
+  // Items are only valid while the drop event runs, so everything is requested before the first await.
+  const requests = Array.from(items)
+    .filter((item) => item.kind === "file")
+    .map((item) => ({ file: item.getAsFile(), handle: item.getAsFileSystemHandle?.() }));
+  const sources = await Promise.all(requests.map(toSource));
+  return sources.filter((source): source is AudioSource => source !== null);
+}
+
+async function toSource({ file, handle }: { file: File | null; handle: Promise<FileSystemHandle | null> | undefined }): Promise<AudioSource | null> {
+  const resolved = await handle;
+  if (resolved?.kind === "file") {
+    const fileHandle = resolved as FileSystemFileHandle;
     return { file: await fileHandle.getFile(), handle: fileHandle };
   }
-  const file = item.getAsFile();
   return file ? sourceFromFile(file) : null;
 }
 

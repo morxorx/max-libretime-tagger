@@ -1,44 +1,21 @@
 import { readMp3Info } from "../audio/mp3Info";
 import { loadTagLib } from "../audio/tagLibLoader";
-import { ConversionError } from "../convert/errors";
 import { FfmpegRunner } from "../convert/ffmpegRunner";
-import { processAudio, type MediaRunner, type ProcessedAudio, type ProcessingOptions } from "../convert/processAudio";
-import type { ProcessingPhase, ProcessingProgress } from "../convert/progress";
-import { describeAudioInfo, describeLoudness, describeTrim, type AudioInfo } from "../domain/audioDescription";
-import { LOUDNESS_TARGETS, targetById, type AppliedLoudness, type LoudnessTarget } from "../domain/loudness";
-import type { TrimOutcome } from "../domain/trim";
-import { isMp3, type AudioSource } from "../io/audioSource";
+import type { ProcessingPhase } from "../convert/progress";
+import { describeAudioInfo, describeLoudness, describeTrim } from "../domain/audioDescription";
+import { LOUDNESS_TARGETS, targetById, type LoudnessTarget } from "../domain/loudness";
+import type { AudioSource } from "../io/audioSource";
+import { AudioQueue, type QueueEntry } from "../queue/audioQueue";
+import type { JobOptions, JobState, PreparationServices, PreparedAudio } from "../queue/preparationJob";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { AudioPreview } from "./audioPreview";
 import { byId, h } from "./dom";
+import { QueueView, setText } from "./queueView";
 
-export interface PreparedAudio {
-  /** Null means the chosen MP3 is used untouched. */
-  blob: Blob | null;
-  converted: boolean;
-  loudness: AppliedLoudness | null;
-  trim: TrimOutcome | null;
-}
+export type { PreparedAudio } from "../queue/preparationJob";
 
-export interface PreparationServices {
-  createRunner(): MediaRunner;
-  describeMp3(file: File): Promise<AudioInfo | null>;
-}
-
-interface Handlers {
-  onChange(): void;
-  onCancel(): void;
-}
-
-type Preparation =
-  | { kind: "idle" }
-  | { kind: "processing" }
-  | { kind: "failed"; message: string }
-  | { kind: "ready"; audio: PreparedAudio };
-
-const MP3_MIME_TYPE = "audio/mpeg";
 const LOADING_MESSAGE = "Loading the converter…";
-const FAILURE_MESSAGE = "The audio could not be prepared. Try another file.";
+const IDLE: JobState = { kind: "idle" };
 
 const REAL_SERVICES: PreparationServices = {
   createRunner: () => new FfmpegRunner(),
@@ -51,13 +28,13 @@ const REAL_SERVICES: PreparationServices = {
   },
 };
 
+/** Shows the controls and the state of the current file, and drives the queue behind them. */
 export class AudioPreparation {
-  private source: AudioSource | null = null;
-  private info: AudioInfo | null = null;
-  private state: Preparation = { kind: "idle" };
-  private runner: MediaRunner | null = null;
-  private generation = 0;
-  private shownPhase: ProcessingPhase | null = null;
+  private readonly queue: AudioQueue;
+  private readonly view = new QueueView((id) => this.removeFile(id));
+  private readonly preview = new AudioPreview();
+  private previewed: PreparedAudio | null = null;
+  private showingFailure = false;
 
   private readonly masthead = byId("masthead");
   private readonly bar = byId("audioProgress");
@@ -69,39 +46,72 @@ export class AudioPreparation {
   private readonly resultLine = byId("audioResult");
   private readonly cancel = byId<HTMLButtonElement>("audioCancel");
   private readonly error = byId("error-file");
-  private readonly preview = new AudioPreview();
 
   constructor(
-    private readonly handlers: Handlers,
-    private readonly services: PreparationServices = REAL_SERVICES,
+    private readonly onChange: () => void,
+    services: PreparationServices = REAL_SERVICES,
   ) {
     this.target.replaceChildren(
       ...LOUDNESS_TARGETS.map((option) => h("option", { value: option.id, textContent: `${option.integratedLufs} LUFS (${option.description})` })),
     );
     this.applySettings(loadSettings());
+    this.queue = new AudioQueue(services, () => this.render(), this.currentOptions());
     for (const control of [this.normalize, this.target, this.trimSilence]) {
       control.addEventListener("change", () => this.onSettingsChanged());
     }
-    this.cancel.addEventListener("click", () => this.handlers.onCancel());
+    this.cancel.addEventListener("click", () => this.cancelCurrent());
+  }
+
+  get currentSource(): AudioSource | null {
+    return this.queue.current?.source ?? null;
   }
 
   get prepared(): PreparedAudio | null {
-    return this.state.kind === "ready" ? this.state.audio : null;
+    const state = this.queue.current?.job.state;
+    return state?.kind === "ready" ? state.audio : null;
+  }
+
+  get hasFiles(): boolean {
+    return this.queue.entries.length > 0;
+  }
+
+  get untaggedCount(): number {
+    return this.queue.untaggedCount;
   }
 
   isProcessing(): boolean {
-    return this.state.kind === "processing";
+    return this.queue.current?.job.state.kind === "processing";
   }
 
   notReadyMessage(): string {
-    return this.state.kind === "failed" ? this.state.message : "Wait until the audio is ready.";
+    const state = this.queue.current?.job.state;
+    return state?.kind === "failed" ? state.message : "Wait until the audio is ready.";
   }
 
-  load(source: AudioSource | null): void {
-    this.source = source;
-    this.info = null;
-    if (source && isMp3(source.file)) void this.loadMp3Info(source.file);
-    this.start();
+  add(sources: AudioSource[]): void {
+    this.queue.add(sources);
+  }
+
+  markTagged(): void {
+    this.queue.markTagged();
+  }
+
+  advance(): void {
+    this.queue.advance();
+  }
+
+  clear(): void {
+    this.queue.clear();
+  }
+
+  private cancelCurrent(): void {
+    const current = this.queue.current;
+    if (current) this.removeFile(current.id);
+  }
+
+  private removeFile(id: number): void {
+    this.queue.remove(id);
+    this.view.focusAfterRemoval();
   }
 
   private applySettings(settings: Settings): void {
@@ -114,113 +124,59 @@ export class AudioPreparation {
   private onSettingsChanged(): void {
     this.target.disabled = !this.normalize.checked;
     saveSettings({ normalize: this.normalize.checked, targetId: targetById(this.target.value).id, trimSilence: this.trimSilence.checked });
-    this.start();
+    this.queue.setOptions(this.currentOptions());
   }
 
-  private selectedTarget(): LoudnessTarget | null {
-    return this.normalize.checked ? targetById(this.target.value) : null;
+  private currentOptions(): JobOptions {
+    const target: LoudnessTarget | null = this.normalize.checked ? targetById(this.target.value) : null;
+    return { target, trimSilence: this.trimSilence.checked };
   }
 
-  private async loadMp3Info(file: File): Promise<void> {
-    const info = await this.services.describeMp3(file);
-    if (this.source?.file !== file) return;
-    this.info = info;
-    this.renderInfo();
-  }
-
-  private start(): void {
-    this.abandonRun();
-    const file = this.source?.file;
-    if (!file) return this.settle({ kind: "idle" });
-    const options = { target: this.selectedTarget(), trimSilence: this.trimSilence.checked, canKeepOriginal: isMp3(file) };
-    if (!options.canKeepOriginal || options.target || options.trimSilence) void this.process(file, options);
-    else this.settle({ kind: "ready", audio: { blob: null, converted: false, loudness: null, trim: null } });
-  }
-
-  private async process(file: File, options: ProcessingOptions): Promise<void> {
-    const generation = this.generation;
-    const runner = this.services.createRunner();
-    this.runner = runner;
-    this.shownPhase = null;
-    this.setProgress(0);
-    this.settle({ kind: "processing" });
-    try {
-      const result = await processAudio(runner, file, options, (progress) => this.showProgress(generation, progress));
-      this.succeed(generation, options, result);
-    } catch (failure) {
-      if (!(failure instanceof ConversionError)) console.error("Audio processing failed.", failure);
-      this.finish(generation, { kind: "failed", message: failure instanceof ConversionError ? failure.message : FAILURE_MESSAGE });
-    }
-  }
-
-  private succeed(generation: number, options: ProcessingOptions, result: ProcessedAudio): void {
-    if (generation !== this.generation) return;
-    const converted = !options.canKeepOriginal;
-    if (converted) this.info = result.info;
-    const loudness = options.target && result.loudness ? { target: options.target, ...result.loudness } : null;
-    const blob = result.bytes && new Blob([result.bytes as Uint8Array<ArrayBuffer>], { type: MP3_MIME_TYPE });
-    this.finish(generation, { kind: "ready", audio: { blob, converted, loudness, trim: result.trim } });
-  }
-
-  private abandonRun(): void {
-    this.generation += 1;
-    this.runner?.terminate();
-    this.runner = null;
-  }
-
-  private finish(generation: number, state: Preparation): void {
-    if (generation !== this.generation) return;
-    this.runner = null;
-    this.settle(state);
-  }
-
-  private settle(state: Preparation): void {
-    const wasFailed = this.state.kind === "failed";
-    this.state = state;
-    this.render(wasFailed);
-    this.handlers.onChange();
-  }
-
-  private render(wasFailed: boolean): void {
-    const processing = this.state.kind === "processing";
+  private render(): void {
+    const entry = this.queue.current;
+    const state = entry?.job.state ?? IDLE;
+    const processing = state.kind === "processing";
     this.masthead.classList.toggle("is-processing", processing);
     this.bar.hidden = !processing;
     this.cancel.hidden = !processing;
-    this.status.textContent = this.statusText();
-    if (this.state.kind === "failed") this.error.textContent = this.state.message;
-    else if (wasFailed) this.error.textContent = "";
-    this.renderInfo();
-    this.renderResult();
+    this.renderProgress(state);
+    setText(this.status, statusText(state));
+    setText(this.infoLine, entry?.job.info ? describeAudioInfo(entry.job.info) : "");
+    this.renderFailure(state);
+    this.renderResult(entry, state);
+    this.view.update(this.queue.entries, entry?.id ?? null);
+    this.onChange();
   }
 
-  private statusText(): string {
-    if (this.state.kind === "processing") return LOADING_MESSAGE;
-    return this.state.kind === "ready" && this.state.audio.blob ? "The audio is ready." : "";
-  }
-
-  private renderInfo(): void {
-    this.infoLine.textContent = this.info ? describeAudioInfo(this.info) : "";
-  }
-
-  private renderResult(): void {
-    const audio = this.prepared;
-    this.resultLine.textContent = audio ? summarize(audio) : "";
-    if (audio && this.source) this.preview.show(audio.blob ?? this.source.file);
-    else this.preview.hide();
-  }
-
-  private showProgress(generation: number, progress: ProcessingProgress): void {
-    if (generation !== this.generation) return;
-    this.setProgress(progress.fraction);
-    if (progress.phase === this.shownPhase) return;
-    this.shownPhase = progress.phase;
-    this.status.textContent = phaseLabel(progress.phase);
-  }
-
-  private setProgress(fraction: number): void {
+  private renderProgress(state: JobState): void {
+    const fraction = state.kind === "processing" ? (state.progress?.fraction ?? 0) : 0;
     this.bar.style.setProperty("--progress", String(fraction));
     this.bar.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
   }
+
+  private renderFailure(state: JobState): void {
+    if (state.kind === "failed") {
+      this.error.textContent = state.message;
+      this.showingFailure = true;
+    } else if (this.showingFailure) {
+      this.error.textContent = "";
+      this.showingFailure = false;
+    }
+  }
+
+  private renderResult(entry: QueueEntry | null, state: JobState): void {
+    const audio = state.kind === "ready" ? state.audio : null;
+    setText(this.resultLine, audio ? summarize(audio) : "");
+    if (audio === this.previewed) return;
+    this.previewed = audio;
+    if (audio && entry) this.preview.show(audio.blob ?? entry.source.file);
+    else this.preview.hide();
+  }
+}
+
+function statusText(state: JobState): string {
+  if (state.kind === "processing") return state.progress ? phaseLabel(state.progress.phase) : LOADING_MESSAGE;
+  return state.kind === "ready" && state.audio.blob ? "The audio is ready." : "";
 }
 
 function summarize({ loudness, trim }: PreparedAudio): string {

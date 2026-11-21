@@ -7,6 +7,7 @@ export interface ReviewModel {
   newName: string;
   tags: Mp3Tags;
   notes: string[];
+  nextLabel: string;
 }
 
 const OUTCOME_MESSAGES: Record<SaveOutcome, (name: string) => string> = {
@@ -39,14 +40,14 @@ export class ReviewDialog {
     this.body.replaceChildren(h("p", { role: "status", textContent: "Saving…" }));
     try {
       const outcome = await save();
-      this.showDone(OUTCOME_MESSAGES[outcome](model.newName), onDone);
+      this.showDone(OUTCOME_MESSAGES[outcome](model.newName), model.nextLabel, onDone);
     } catch (error) {
       this.showFailure(error, model, save, onDone);
     }
   }
 
-  private showDone(message: string, onDone: () => void): void {
-    const next = h("button", { type: "button", class: "btn primary", textContent: "Tag another file" });
+  private showDone(message: string, nextLabel: string, onDone: () => void): void {
+    const next = h("button", { type: "button", class: "btn primary", textContent: nextLabel });
     const close = h("button", { type: "button", class: "btn", textContent: "Close" });
     next.addEventListener("click", () => {
       this.dialog.close();

@@ -53,11 +53,8 @@ class TaggerApp {
   private readonly primaryCoverRow = byId("primaryCoverRow");
   private readonly readout = byId<HTMLOutputElement>("readout");
 
-  private readonly picker = new AudioPicker(() => this.onFileChosen());
-  private readonly audio = new AudioPreparation({
-    onChange: () => this.onAudioStateChanged(),
-    onCancel: () => this.picker.clear(),
-  });
+  private readonly picker = new AudioPicker((sources) => this.audio.add(sources));
+  private readonly audio = new AudioPreparation(() => this.onAudioChanged());
   private readonly contributors = new ContributorsInput(() => this.updateReadout());
   private readonly cover = new CoverEditor(() => this.onCoverChanged());
   private readonly reviewDialog = new ReviewDialog();
@@ -92,13 +89,9 @@ class TaggerApp {
     this.updateReadout();
   }
 
-  private onFileChosen(): void {
-    this.audio.load(this.picker.source);
-    this.updateReadout();
-  }
-
-  private onAudioStateChanged(): void {
+  private onAudioChanged(): void {
     this.reviewButton.disabled = this.audio.isProcessing();
+    this.picker.showsMoreFiles(this.audio.hasFiles);
   }
 
   private renderShowOptions(selected: string): void {
@@ -149,7 +142,7 @@ class TaggerApp {
 
   private readForm(contributors: string[]): RawForm {
     return {
-      hasFile: this.picker.source !== null,
+      hasFile: this.audio.currentSource !== null,
       hasCover: this.cover.hasCover(),
       show: this.show.value,
       episode: this.episode.value,
@@ -169,7 +162,7 @@ class TaggerApp {
     const result = validateForm(this.readForm(this.contributors.values()));
     if (!result.ok) return this.showErrors(result.errors);
 
-    const source = this.picker.source;
+    const source = this.audio.currentSource;
     const audio = this.audio.prepared;
     if (source && !audio) return this.showErrors({ file: this.audio.notReadyMessage() });
     const cover = await this.prepareCover();
@@ -188,6 +181,7 @@ class TaggerApp {
           replacesOriginal: canReplaceOriginal(source),
           nameWasShortened: isEpisodeTitleShortenedInFilename(result.draft),
         }),
+        nextLabel: nextLabel(this.audio.untaggedCount - 1),
       },
       () => this.save(source, result.draft, cover, audio),
       () => this.resetForNextFile(),
@@ -208,6 +202,7 @@ class TaggerApp {
     const mp3 = audio.blob ? new Uint8Array(await audio.blob.arrayBuffer()) : await readBytes(source);
     const tagged = await writeTags(await loadTagLib(), mp3, buildTags(draft), coverBytes);
     const outcome = await saveTaggedMp3(source, buildFilename(draft), tagged);
+    this.audio.markTagged();
     await this.rememberShow(draft, cover);
     return outcome;
   }
@@ -228,16 +223,17 @@ class TaggerApp {
   }
 
   private resetForNextFile(): void {
-    this.picker.clear();
+    this.audio.advance();
     this.episodeTitle.value = "";
     this.date.value = "";
     this.clearAllErrors();
     this.applyShowDefaults();
-    this.picker.focus();
+    if (this.audio.currentSource) this.show.focus();
+    else this.picker.focus();
   }
 
   private clearAll(): void {
-    this.picker.clear();
+    this.audio.clear();
     this.episodeTitle.value = "";
     this.date.value = "";
     this.renderShowOptions("");
@@ -269,6 +265,10 @@ class TaggerApp {
   private clearAllErrors(): void {
     for (const control of Object.values(this.errorFields())) this.clearError(control);
   }
+}
+
+function nextLabel(filesLeft: number): string {
+  return filesLeft > 0 ? `Tag next file (${filesLeft} left)` : "Tag another file";
 }
 
 function order(name: FieldName): number {

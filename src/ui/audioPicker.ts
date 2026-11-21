@@ -1,19 +1,19 @@
-import { isSupportedAudio, pickAudioWithHandle, sourceFromDrop, sourceFromFile, type AudioSource } from "../io/audioSource";
+import { isSupportedAudio, pickAudioWithHandles, sourceFromFile, sourcesFromDrop, type AudioSource } from "../io/audioSource";
 import { byId } from "./dom";
 
-const EMPTY_PROMPT = "Drop an audio file here, or choose a file";
-const UNSUPPORTED_MESSAGE = "Use an MP3, WAV, FLAC, AIFF, M4A, AAC, OGG or Opus file.";
+const EMPTY_PROMPT = "Drop audio files here, or choose files";
+const ADD_MORE_PROMPT = "Drop more audio files here, or choose files";
+const UNSUPPORTED_MESSAGE = "Use MP3, WAV, FLAC, AIFF, M4A, AAC, OGG or Opus files.";
 
 export class AudioPicker {
-  source: AudioSource | null = null;
   private readonly button = byId<HTMLButtonElement>("fileDrop");
   private readonly label = byId<HTMLElement>("fileDropText");
   private readonly input = byId<HTMLInputElement>("fileInput");
   private readonly error = byId<HTMLElement>("error-file");
 
-  constructor(private readonly onChange: () => void) {
+  constructor(private readonly onFiles: (sources: AudioSource[]) => void) {
     this.button.addEventListener("click", () => void this.choose());
-    this.input.addEventListener("change", () => this.acceptInputFile());
+    this.input.addEventListener("change", () => this.acceptInputFiles());
     this.button.addEventListener("dragover", (event) => {
       event.preventDefault();
       this.button.classList.add("is-over");
@@ -22,8 +22,8 @@ export class AudioPicker {
     this.button.addEventListener("drop", (event) => void this.acceptDrop(event));
   }
 
-  clear(): void {
-    this.set(null);
+  showsMoreFiles(hasFiles: boolean): void {
+    this.label.textContent = hasFiles ? ADD_MORE_PROMPT : EMPTY_PROMPT;
   }
 
   focus(): void {
@@ -31,38 +31,32 @@ export class AudioPicker {
   }
 
   private async choose(): Promise<void> {
-    const picked = await pickAudioWithHandle();
-    if (picked) this.accept(picked);
+    const picked = await pickAudioWithHandles();
+    if (picked.length > 0) this.accept(picked);
     else if (!window.showOpenFilePicker) this.input.click();
   }
 
-  private acceptInputFile(): void {
-    const file = this.input.files?.[0];
+  private acceptInputFiles(): void {
+    const files = Array.from(this.input.files ?? []);
     this.input.value = "";
-    if (file) this.accept(sourceFromFile(file));
+    if (files.length > 0) this.accept(files.map(sourceFromFile));
   }
 
   private async acceptDrop(event: DragEvent): Promise<void> {
     event.preventDefault();
     this.button.classList.remove("is-over");
-    const item = event.dataTransfer?.items[0];
-    const source = item ? await sourceFromDrop(item) : null;
-    if (source) this.accept(source);
+    const sources = event.dataTransfer ? await sourcesFromDrop(event.dataTransfer.items) : [];
+    if (sources.length > 0) this.accept(sources);
   }
 
-  private accept(source: AudioSource): void {
-    if (!isSupportedAudio(source.file)) {
-      this.error.textContent = UNSUPPORTED_MESSAGE;
-      return;
-    }
-    this.set(source);
+  private accept(sources: AudioSource[]): void {
+    const supported = sources.filter((source) => isSupportedAudio(source.file));
+    const skipped = sources.length - supported.length;
+    this.error.textContent = skipped === 0 ? "" : skippedMessage(skipped);
+    if (supported.length > 0) this.onFiles(supported);
   }
+}
 
-  private set(source: AudioSource | null): void {
-    this.source = source;
-    this.error.textContent = "";
-    this.label.textContent = source ? source.file.name : EMPTY_PROMPT;
-    this.button.classList.toggle("has-file", source !== null);
-    this.onChange();
-  }
+function skippedMessage(skipped: number): string {
+  return skipped === 1 ? UNSUPPORTED_MESSAGE : `${skipped} files were skipped. ${UNSUPPORTED_MESSAGE}`;
 }
