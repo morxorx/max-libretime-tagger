@@ -12,11 +12,10 @@ const CD_RATE = 44100;
 const VIDEO_RATE = 48000;
 const VIDEO_RATE_FAMILY_STEP = 4000;
 
-export interface NormalizationPlan {
-  target: LoudnessTarget;
-  measurement: LoudnessMeasurement;
-  sampleRate: number;
-}
+/** A plain gain is cheap and is what loudnorm's linear mode amounts to; loudnorm is kept for peaks that need limiting. */
+export type NormalizationPlan =
+  | { kind: "gain"; target: LoudnessTarget; gainDb: number }
+  | { kind: "loudnorm"; target: LoudnessTarget; measurement: LoudnessMeasurement; sampleRate: number };
 
 export interface EncodePlan {
   trim: TrimWindow | null;
@@ -28,18 +27,24 @@ export function buildDetectArgs(): string[] {
   return [...readFirstAudioStream(), "-af", detector, "-f", "null", "-"];
 }
 
-export function buildMeasureArgs(target: LoudnessTarget, trim: TrimWindow | null): string[] {
+// framelog=verbose keeps the per-frame lines out of the log, which would otherwise hold tens of thousands of lines per hour.
+export function buildMeasureArgs(trim: TrimWindow | null): string[] {
+  const filters = [...trimFilters(trim), "ebur128=peak=true:framelog=verbose"];
+  return [...readFirstAudioStream(), "-af", filters.join(","), "-f", "null", "-"];
+}
+
+export function buildLoudnormMeasureArgs(target: LoudnessTarget, trim: TrimWindow | null): string[] {
   const filters = [...trimFilters(trim), `${loudnormTarget(target)}:print_format=json`];
   return [...readFirstAudioStream(), "-af", filters.join(","), "-f", "null", "-"];
 }
 
 export function buildEncodeArgs({ trim, normalization }: EncodePlan): string[] {
-  const filters = [...trimFilters(trim), ...(normalization ? [loudnormApply(normalization)] : [])];
+  const filters = [...trimFilters(trim), ...(normalization ? [normalizationFilter(normalization)] : [])];
   return [
     ...readFirstAudioStream(),
     "-map_metadata", "-1",
     ...(filters.length > 0 ? ["-af", filters.join(",")] : []),
-    ...(normalization ? ["-ar", String(normalization.sampleRate)] : []),
+    ...(normalization?.kind === "loudnorm" ? ["-ar", String(normalization.sampleRate)] : []),
     "-c:a", "libmp3lame",
     "-b:a", "320k",
     OUTPUT_PATH,
@@ -77,7 +82,11 @@ function loudnormTarget(target: LoudnessTarget): string {
   return `loudnorm=I=${target.integratedLufs}:TP=${TRUE_PEAK_CEILING_DBTP}:LRA=${LOUDNESS_RANGE_LU}`;
 }
 
-function loudnormApply({ target, measurement }: NormalizationPlan): string {
+function normalizationFilter(plan: NormalizationPlan): string {
+  return plan.kind === "gain" ? `volume=${plan.gainDb.toFixed(3)}dB` : loudnormApply(plan);
+}
+
+function loudnormApply({ target, measurement }: Extract<NormalizationPlan, { kind: "loudnorm" }>): string {
   const measured = [
     `measured_I=${measurement.integrated}`,
     `measured_TP=${measurement.truePeak}`,

@@ -4,12 +4,12 @@ import { planTrim } from "../src/domain/trim";
 describe("planTrim", () => {
   it("cuts leading and trailing silence and keeps a little padding", () => {
     const plan = planTrim(100, [{ start: 0, end: 10 }, { start: 90, end: 100 }]);
-    expect(plan.window).toEqual({ start: 9.75, end: 90.25 });
-    expect(plan.outcome).toEqual({ kind: "trimmed", startSeconds: 9.75, endSeconds: 9.75 });
+    expect(plan.window).toEqual({ start: 9.5, end: 90.5, fadeIn: true, fadeOut: true });
+    expect(plan.outcome).toEqual({ kind: "trimmed", startSeconds: 9.5, endSeconds: 9.5 });
   });
 
   it("can trim only one end", () => {
-    expect(planTrim(100, [{ start: 90, end: 100 }]).window).toEqual({ start: 0, end: 90.25 });
+    expect(planTrim(100, [{ start: 90, end: 100 }]).window).toEqual({ start: 0, end: 90.5, fadeIn: false, fadeOut: true });
   });
 
   it("leaves pauses inside the recording alone", () => {
@@ -17,7 +17,7 @@ describe("planTrim", () => {
   });
 
   it("does nothing when the edge silence is shorter than the padding", () => {
-    expect(planTrim(100, [{ start: 0, end: 0.2 }]).window).toBeNull();
+    expect(planTrim(100, [{ start: 0, end: 0.4 }]).window).toBeNull();
   });
 
   it("skips audio that is silent from start to end", () => {
