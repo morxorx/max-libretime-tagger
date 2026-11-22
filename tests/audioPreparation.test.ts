@@ -71,8 +71,8 @@ describe("AudioPreparation", () => {
     element<HTMLInputElement>("normalize").click();
     expect(element<HTMLSelectElement>("loudnessTarget").disabled).toBe(false);
     await flush();
-    expect(preparation.prepared?.loudness).toMatchObject({ target: { id: "ebu-r128" }, type: "linear", measuredLufs: -30, expectedLufs: -23.1 });
-    expect(element("audioResult").textContent).toBe("Loudness: -30.0 LUFS (true peak -5.0 dBTP) → about -23.1 LUFS.");
+    expect(preparation.prepared?.loudness).toMatchObject({ target: { id: "ebu-r128" }, type: "linear", measuredLufs: -30, expectedLufs: -23 });
+    expect(element("audioResult").textContent).toBe("Loudness: -30.0 LUFS (true peak -12.0 dBTP) → about -23.0 LUFS.");
   });
 
   it("starts processing an MP3 when silence trimming is switched on", async () => {

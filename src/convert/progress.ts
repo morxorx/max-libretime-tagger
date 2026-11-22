@@ -1,4 +1,4 @@
-export type ProcessingPass = "detecting" | "measuring" | "encoding";
+export type ProcessingPass = "detecting" | "measuring" | "refining" | "encoding";
 export type ProcessingPhase = ProcessingPass | "normalizing";
 
 export interface ProcessingProgress {
@@ -6,12 +6,12 @@ export interface ProcessingProgress {
   fraction: number;
 }
 
-const PASS_ORDER: readonly ProcessingPass[] = ["detecting", "measuring", "encoding"];
-// Rough share of the total time each pass takes on a long recording.
-const PASS_WEIGHTS: Record<ProcessingPass, number> = { detecting: 0.15, measuring: 0.35, encoding: 0.5 };
+const PASS_ORDER: readonly ProcessingPass[] = ["detecting", "measuring", "refining", "encoding"];
+// Rough share of the time each pass takes on a long recording. Refining is the slow loudnorm measurement, only needed for peaky material.
+const PASS_WEIGHTS: Record<ProcessingPass, number> = { detecting: 0.1, measuring: 0.3, refining: 1, encoding: 0.6 };
 
 export function plannedPasses(options: { trimSilence: boolean; normalize: boolean }): ProcessingPass[] {
-  const wanted = { detecting: options.trimSilence, measuring: options.normalize, encoding: true };
+  const wanted = { detecting: options.trimSilence, measuring: options.normalize, refining: false, encoding: true };
   return PASS_ORDER.filter((pass) => wanted[pass]);
 }
 

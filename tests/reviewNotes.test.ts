@@ -6,6 +6,7 @@ const broadcast = targetById("ebu-r128");
 const loudness = (overrides: Partial<AppliedLoudness> = {}): AppliedLoudness => ({
   target: broadcast,
   measuredLufs: -27.6,
+  measuredTruePeak: -4,
   expectedLufs: -23,
   type: "linear",
   ...overrides,
@@ -52,7 +53,7 @@ describe("buildReviewNotes", () => {
 
   it("reports what silence trimming did", () => {
     const notes = buildReviewNotes(facts({ trim: { kind: "trimmed", startSeconds: 2, endSeconds: 3.5 } }));
-    expect(notes).toContain("Trimmed 2.0 s at the start and 3.5 s at the end.");
+    expect(notes).toContain("Trimmed 2.0 s at the start and 3.5 s at the end. A short fade was added at the cuts.");
   });
 
   it("keeps the shortened-title note", () => {

@@ -190,6 +190,8 @@ function phaseLabel(phase: ProcessingPhase): string {
       return "Looking for silence…";
     case "measuring":
       return "Measuring loudness…";
+    case "refining":
+      return "Refining the loudness measurement…";
     case "normalizing":
       return "Normalizing and encoding…";
     case "encoding":

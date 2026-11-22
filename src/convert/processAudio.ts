@@ -1,8 +1,9 @@
 import type { AudioInfo } from "../domain/audioDescription";
-import { isAtTarget, type LoudnessResult, type LoudnessTarget } from "../domain/loudness";
+import { TRUE_PEAK_CEILING_DBTP, isAtTarget, type LoudnessResult, type LoudnessTarget } from "../domain/loudness";
 import { NO_TRIM, planTrim, type TrimOutcome, type TrimPlan } from "../domain/trim";
 import { ConversionError } from "./errors";
-import { buildDetectArgs, buildEncodeArgs, buildMeasureArgs, resolveOutputRate, type NormalizationPlan } from "./ffmpegArgs";
+import { buildDetectArgs, buildEncodeArgs, buildLoudnormMeasureArgs, buildMeasureArgs, resolveOutputRate, type NormalizationPlan } from "./ffmpegArgs";
+import { parseReading, type LoudnessReading } from "./ebur128Report";
 import { parseMeasurement, parseNormalizationType, parseOutputLufs } from "./loudnormReport";
 import { parseAudioInfo, parseDuration, parseSilences } from "./mediaLog";
 import { plannedPasses, progressOf, type ProcessingPass, type ProcessingPhase, type ProcessingProgress } from "./progress";
@@ -47,6 +48,7 @@ export async function processAudio(runner: MediaRunner, file: File, options: Pro
 class ProcessingSession {
   private readonly passes: ProcessingPass[];
   private info: AudioInfo | null = null;
+  private furthest = 0;
 
   constructor(
     private readonly runner: MediaRunner,
@@ -58,16 +60,16 @@ class ProcessingSession {
 
   async run(): Promise<ProcessedAudio> {
     const trim = this.options.trimSilence ? await this.detectSilence() : NO_TRIM;
-    const measured = this.options.target ? await this.measureLoudness(this.options.target, trim) : null;
-    const normalization = measured?.plan ?? null;
+    const analysis = this.options.target ? await this.analyze(this.options.target, trim) : null;
+    const normalization = analysis?.plan ?? null;
     const outcome = this.options.trimSilence ? trim.outcome : null;
 
     if (this.options.canKeepOriginal && trim.window === null && normalization === null) {
-      this.report({ phase: "encoding", fraction: 1 });
-      return { bytes: null, info: this.info, loudness: measured?.unchanged ?? null, trim: outcome };
+      this.announce({ phase: "encoding", fraction: 1 });
+      return { bytes: null, info: this.info, loudness: analysis?.unchanged ?? null, trim: outcome };
     }
     const log = await this.pass(normalization ? "normalizing" : "encoding", buildEncodeArgs({ trim: trim.window, normalization }));
-    const loudness = normalization ? this.normalizedLoudness(normalization, log) : (measured?.unchanged ?? null);
+    const loudness = normalization && analysis ? this.normalizedLoudness(normalization, analysis.reading, log) : (analysis?.unchanged ?? null);
     return { bytes: await this.runner.readOutput(), info: this.info, loudness, trim: outcome };
   }
 
@@ -77,28 +79,50 @@ class ProcessingSession {
     return duration === undefined ? NO_TRIM : planTrim(duration, parseSilences(log, duration));
   }
 
-  private async measureLoudness(target: LoudnessTarget, trim: TrimPlan): Promise<{ plan: NormalizationPlan | null; unchanged: LoudnessResult | null }> {
-    const measurement = parseMeasurement(await this.pass("measuring", buildMeasureArgs(target, trim.window)));
-    if (isAtTarget(target, measurement.integrated, measurement.truePeak)) {
-      const lufs = measurement.integrated;
-      return { plan: null, unchanged: { measuredLufs: lufs, measuredTruePeak: measurement.truePeak, expectedLufs: lufs, type: "unchanged" } };
+  private async analyze(target: LoudnessTarget, trim: TrimPlan): Promise<Analysis> {
+    const reading = parseReading(await this.pass("measuring", buildMeasureArgs(trim.window)));
+    if (isAtTarget(target, reading.integrated, reading.truePeak)) {
+      const lufs = reading.integrated;
+      return { reading, plan: null, unchanged: { measuredLufs: lufs, measuredTruePeak: reading.truePeak, expectedLufs: lufs, type: "unchanged" } };
     }
-    const sampleRate = resolveOutputRate(this.info?.sampleRateHz);
-    return { plan: { target, measurement, sampleRate }, unchanged: null };
+    const gainDb = target.integratedLufs - reading.integrated;
+    if (reading.truePeak + gainDb <= TRUE_PEAK_CEILING_DBTP) return { reading, plan: { kind: "gain", target, gainDb }, unchanged: null };
+    return { reading, plan: await this.planLoudnorm(target, trim), unchanged: null };
   }
 
-  private normalizedLoudness({ target, measurement }: NormalizationPlan, log: string): LoudnessResult {
+  private async planLoudnorm(target: LoudnessTarget, trim: TrimPlan): Promise<NormalizationPlan> {
+    this.passes.splice(this.passes.indexOf("encoding"), 0, "refining");
+    const measurement = parseMeasurement(await this.pass("refining", buildLoudnormMeasureArgs(target, trim.window)));
+    return { kind: "loudnorm", target, measurement, sampleRate: resolveOutputRate(this.info?.sampleRateHz) };
+  }
+
+  private normalizedLoudness(plan: NormalizationPlan, reading: LoudnessReading, log: string): LoudnessResult {
+    if (plan.kind === "gain") {
+      return { measuredLufs: reading.integrated, measuredTruePeak: reading.truePeak, expectedLufs: plan.target.integratedLufs, type: "linear" };
+    }
     return {
-      measuredLufs: measurement.integrated,
-      measuredTruePeak: measurement.truePeak,
-      expectedLufs: parseOutputLufs(log) ?? target.integratedLufs,
+      measuredLufs: plan.measurement.integrated,
+      measuredTruePeak: plan.measurement.truePeak,
+      expectedLufs: parseOutputLufs(log) ?? plan.target.integratedLufs,
       type: parseNormalizationType(log),
     };
   }
 
   private async pass(phase: ProcessingPhase, args: string[]): Promise<string> {
-    const log = await this.runner.run(args, (ratio) => this.report(progressOf(phase, ratio, this.passes)));
+    const log = await this.runner.run(args, (ratio) => this.announce(progressOf(phase, ratio, this.passes)));
     this.info ??= parseAudioInfo(log);
     return log;
   }
+
+  // The bar only moves forward, even when a slower pass is added half way through.
+  private announce(progress: ProcessingProgress): void {
+    this.furthest = Math.max(this.furthest, progress.fraction);
+    this.report({ phase: progress.phase, fraction: this.furthest });
+  }
+}
+
+interface Analysis {
+  reading: LoudnessReading;
+  plan: NormalizationPlan | null;
+  unchanged: LoudnessResult | null;
 }

@@ -19,17 +19,27 @@ describe("describeAudioInfo", () => {
 
 describe("describeLoudness", () => {
   it("shows the change", () => {
-    expect(describeLoudness({ measuredLufs: -27.64, expectedLufs: -23.02, type: "linear" })).toBe("-27.6 LUFS → about -23.0 LUFS.");
+    expect(describeLoudness({ measuredLufs: -27.64, measuredTruePeak: -3.04, expectedLufs: -23.02, type: "linear" })).toBe(
+      "-27.6 LUFS (true peak -3.0 dBTP) → about -23.0 LUFS.",
+    );
   });
 
   it("says when nothing had to change", () => {
-    expect(describeLoudness({ measuredLufs: -23.2, expectedLufs: -23.2, type: "unchanged" })).toBe("-23.2 LUFS, already at the target.");
+    expect(describeLoudness({ measuredLufs: -14.3, measuredTruePeak: -1, expectedLufs: -14.3, type: "unchanged" })).toBe(
+      "-14.3 LUFS (true peak -1.0 dBTP), already at the target.",
+    );
   });
 });
 
 describe("describeTrim", () => {
   it("states how much was cut at each end", () => {
-    expect(describeTrim({ kind: "trimmed", startSeconds: 1.75, endSeconds: 2.25 })).toBe("Trimmed 1.8 s at the start and 2.3 s at the end.");
+    expect(describeTrim({ kind: "trimmed", startSeconds: 1.75, endSeconds: 2.25 })).toBe(
+      "Trimmed 1.8 s at the start and 2.3 s at the end. A short fade was added at the cuts.",
+    );
+  });
+
+  it("mentions only the edge that was cut", () => {
+    expect(describeTrim({ kind: "trimmed", startSeconds: 0, endSeconds: 4 })).toBe("Trimmed 4.0 s at the end. A short fade was added at the cut.");
   });
 
   it.each([
